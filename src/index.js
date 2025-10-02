@@ -8,6 +8,7 @@ import waitlistRoutes from './routes/waitlist.js';
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (for Render, Heroku, etc.)
 const PORT = process.env.PORT || 5000;
 
 // Connect to database

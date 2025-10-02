@@ -7,6 +7,7 @@ const WaitlistSchema = new mongoose.Schema({
     unique: true,
     lowercase: true,
     trim: true,
+    index: true,
   },
   twitter: {
     type: String,
@@ -53,7 +54,7 @@ WaitlistSchema.pre('save', async function (next) {
 });
 
 // Index for better query performance
-WaitlistSchema.index({ email: 1 });
+// Removed duplicate index for email
 WaitlistSchema.index({ joinedAt: -1 });
 WaitlistSchema.index({ position: 1 });
 
