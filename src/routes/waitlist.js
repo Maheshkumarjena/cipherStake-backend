@@ -56,7 +56,16 @@ router.post('/', waitlistRateLimit, validateWaitlistEntry, async (req, res) => {
 
     await waitlistEntry.save();
 
-    // Send welcome email (non-blocking)
+    // Send emails (non-blocking)
+    emailService.notifyAdminOfSubscription({
+      email: waitlistEntry.email,
+      twitter: waitlistEntry.twitter,
+      telegram: waitlistEntry.telegram,
+      discord: waitlistEntry.discord,
+      referralCode: waitlistEntry.referralCode,
+      position: waitlistEntry.position,
+      joinedAt: waitlistEntry.joinedAt
+    }).catch(console.error);
     emailService.sendWelcomeEmail(email, waitlistEntry.position).catch(console.error);
 
     res.status(201).json({

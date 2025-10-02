@@ -1,25 +1,59 @@
 import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
+dotenv.config();
+    console.log('EMAIL_SERVICE:', process.env.EMAIL_SERVICE || 'Not set');
+    console.log('EMAIL_HOST:', process.env.EMAIL_HOST || 'Not set');
+    console.log('EMAIL_PORT:', process.env.EMAIL_PORT || 'Not set');
+    console.log('EMAIL_USER:', process.env.EMAIL_USER ? 'Set' : 'Not set');
+    console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'Set' : 'Not set');
+        console.log('EMAIL_PASS:', process.env.EMAIL_PASS );
+
+
+
 
 class EmailService {
   constructor() {
-    if (process.env.EMAIL_SERVICE === 'brevo') {
-      this.transporter = nodemailer.createTransport({
-        host: process.env.EMAIL_HOST || 'smtp-relay.brevo.com',
-        port: parseInt(process.env.EMAIL_PORT || '587'),
-        secure: false,
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
-    } else {
-      this.transporter = nodemailer.createTransport({
-        service: process.env.EMAIL_SERVICE,
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
+    // Always use Brevo SMTP
+    this.transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST || 'smtp-relay.brevo.com',
+      port: parseInt(process.env.EMAIL_PORT || '587'),
+      secure: false,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+    this.adminEmail = 'cipherstakes@gmail.com';
+    this.fromEmail = 'mkjena1512@gmail.com';
+  }
+
+  async notifyAdminOfSubscription(userDetails) {
+    if (!this.transporter) return;
+    const { email, twitter, telegram, discord, referralCode, position, joinedAt } = userDetails;
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>New Waitlist Subscription</h2>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Twitter:</strong> ${twitter || 'N/A'}</p>
+        <p><strong>Telegram:</strong> ${telegram || 'N/A'}</p>
+        <p><strong>Discord:</strong> ${discord || 'N/A'}</p>
+        <p><strong>Referral Code:</strong> ${referralCode || 'N/A'}</p>
+        <p><strong>Position:</strong> #${position}</p>
+        <p><strong>Joined At:</strong> ${joinedAt}</p>
+      </div>
+    `;
+    const mailOptions = {
+      from: this.fromEmail,
+      to: this.adminEmail,
+      subject: 'New Waitlist Subscription',
+      html,
+    };
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log(`Admin notified of new subscription: ${email}`);
+      console.log('Nodemailer response (admin):', info);
+    } catch (error) {
+      console.error('Failed to notify admin:', error);
     }
   }
 
@@ -57,14 +91,16 @@ class EmailService {
     `;
 
     const mailOptions = {
+      from: this.fromEmail,
       to: email,
       subject: 'Welcome to CipherStakes Waitlist!',
       html,
     };
 
     try {
-      await this.transporter.sendMail(mailOptions);
+      const info = await this.transporter.sendMail(mailOptions);
       console.log(`Welcome email sent to: ${email}`);
+      console.log('Nodemailer response (user):', info);
     } catch (error) {
       console.error('Failed to send welcome email:', error);
     }
