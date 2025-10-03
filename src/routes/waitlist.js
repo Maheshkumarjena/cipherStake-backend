@@ -2,7 +2,7 @@ import express from 'express';
 import { Waitlist } from '../models/Waitlist.js';
 import { validateWaitlistEntry } from '../middleware/validation.js';
 import { waitlistRateLimit } from '../middleware/rateLimit.js';
-import { emailService } from '../utils/emailService.js';
+import emailService from '../utils/emailService.js';
 
 const router = express.Router();
 
@@ -56,23 +56,44 @@ router.post('/', waitlistRateLimit, validateWaitlistEntry, async (req, res) => {
 
     await waitlistEntry.save();
 
-    // Send emails (non-blocking)
-    const adminEmailResult = await emailService.notifyAdminOfSubscription({
-      email: waitlistEntry.email,
-      twitter: waitlistEntry.twitter,
-      telegram: waitlistEntry.telegram,
-      discord: waitlistEntry.discord,
-      referralCode: waitlistEntry.referralCode,
-      position: waitlistEntry.position,
-      joinedAt: waitlistEntry.joinedAt
-    }).catch(console.error);
-    const welcomeEmailResult = await emailService.sendWelcomeEmail(email, waitlistEntry.position).catch(console.error);
+    // Send welcome and admin notification emails in parallel (non-blocking)
+    let userResult = null;
+    let adminResult = null;
+
+    try {
+      const [userRes, adminRes] = await Promise.allSettled([
+        emailService.sendWelcomeEmail({
+          email: waitlistEntry.email,
+          name: waitlistEntry.email.split('@')[0],
+          position: waitlistEntry.position,
+          referralCode: waitlistEntry.referralCode
+        }),
+        emailService.sendAdminNotification({
+          email: waitlistEntry.email,
+          twitter: waitlistEntry.twitter,
+          telegram: waitlistEntry.telegram,
+          discord: waitlistEntry.discord,
+          referralCode: waitlistEntry.referralCode,
+          position: waitlistEntry.position,
+          joinedAt: waitlistEntry.joinedAt
+        })
+      ]);
+
+      if (userRes.status === 'fulfilled') userResult = userRes.value;
+      else userResult = { error: userRes.reason?.message || String(userRes.reason) };
+
+      if (adminRes.status === 'fulfilled') adminResult = adminRes.value;
+      else adminResult = { error: adminRes.reason?.message || String(adminRes.reason) };
+    } catch (e) {
+      // Shouldn't reach here because Promise.allSettled never throws, but keep safe fallback
+      console.error('Unexpected error sending emails:', e);
+    }
 
     res.status(201).json({
       message: 'Successfully joined waitlist!',
       position: waitlistEntry.position,
-      emailStatus: welcomeEmailResult,
-      adminEmailStatus: adminEmailResult,
+      emailStatus: userResult,
+      adminEmailStatus: adminResult,
       data: {
         email: waitlistEntry.email,
         twitter: waitlistEntry.twitter,

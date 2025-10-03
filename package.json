@@ -8,6 +8,7 @@
     "start": "node src/index.js"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
@@ -15,6 +16,7 @@
     "helmet": "^7.1.0",
     "mongoose": "^8.0.3",
     "nodemailer": "^6.9.7",
+    "resend": "^6.1.2",
     "validator": "^13.11.0",
     "zod": "^3.22.4"
   },
