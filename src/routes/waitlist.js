@@ -36,10 +36,10 @@ router.post('/', waitlistRateLimit, validateWaitlistEntry, async (req, res) => {
     // Check if email already exists
     const existingEntry = await Waitlist.findOne({ email: email.toLowerCase() });
     if (existingEntry) {
-      return res.status(409).json({
-        error: 'Email already registered',
+      return res.status(200).json({
         message: 'This email address is already on our waitlist',
-        position: existingEntry.position
+        position: existingEntry.position,
+        alreadyRegistered: true
       });
     }
 
@@ -57,7 +57,7 @@ router.post('/', waitlistRateLimit, validateWaitlistEntry, async (req, res) => {
     await waitlistEntry.save();
 
     // Send emails (non-blocking)
-    emailService.notifyAdminOfSubscription({
+    const adminEmailResult = await emailService.notifyAdminOfSubscription({
       email: waitlistEntry.email,
       twitter: waitlistEntry.twitter,
       telegram: waitlistEntry.telegram,
@@ -66,11 +66,13 @@ router.post('/', waitlistRateLimit, validateWaitlistEntry, async (req, res) => {
       position: waitlistEntry.position,
       joinedAt: waitlistEntry.joinedAt
     }).catch(console.error);
-    emailService.sendWelcomeEmail(email, waitlistEntry.position).catch(console.error);
+    const welcomeEmailResult = await emailService.sendWelcomeEmail(email, waitlistEntry.position).catch(console.error);
 
     res.status(201).json({
       message: 'Successfully joined waitlist!',
       position: waitlistEntry.position,
+      emailStatus: welcomeEmailResult,
+      adminEmailStatus: adminEmailResult,
       data: {
         email: waitlistEntry.email,
         twitter: waitlistEntry.twitter,
